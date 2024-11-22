@@ -1,0 +1,88 @@
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local Window = OrionLib:MakeWindow({Name = "MM2 Unified Crate & Visual Spawner", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionMM2Config"})
+
+local mainTab = Window:MakeTab({
+    Name = "Spawner",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- Crate and knife data
+local Weapons = require(game:GetService("ReplicatedStorage").Database.Sync.Item)
+
+-- Unified textbox input
+local selectedKnife = ""
+
+local function NameMatch(name, search)
+    local sanitizedName = name:gsub("_G_%d%d%d%d", ""):gsub("_K_%d%d%d%d", ""):lower()
+    local sanitizedSearch = search:lower()
+    return sanitizedName:find(sanitizedSearch, 1, true) ~= nil
+end
+
+local WeaponNames = {}
+for WeaponName, _ in pairs(Weapons) do
+    table.insert(WeaponNames, WeaponName)
+end
+
+-- Add unified input textbox
+mainTab:AddTextbox({
+    Name = "Enter Knife Name",
+    Default = "",
+    TextDisappear = false,
+    Callback = function(value)
+        selectedKnife = value
+    end
+})
+
+-- Add combined spawn button
+mainTab:AddButton({
+    Name = "Spawn Crate and Visual Knife",
+    Callback = function()
+        if selectedKnife == "" then
+            OrionLib:MakeNotification({
+                Name = "Error",
+                Content = "Please enter a knife name.",
+                Image = "rbxassetid://4483345998",
+                Time = 5
+            })
+            return
+        end
+
+        -- Validate crate/knife name
+        local foundWeapons = {}
+        for WeaponName, _ in pairs(Weapons) do
+            if NameMatch(WeaponName, selectedKnife) then
+                table.insert(foundWeapons, WeaponName)
+            end
+        end
+
+        if #foundWeapons == 0 then
+            OrionLib:MakeNotification({
+                Name = "Error",
+                Content = "Invalid knife name.",
+                Image = "rbxassetid://4483345998",
+                Time = 5
+            })
+            return
+        end
+
+        -- Spawn crate with knife
+        local cratePath = game:GetService("ReplicatedStorage").Remotes["SpawnCrate"] -- Adjust this path as needed
+        cratePath:InvokeServer(selectedKnife) -- Crate spawner logic
+
+        -- Visualize knife
+        local selectedVisual = foundWeapons[1]
+        local visualPath = game:GetService("ReplicatedStorage").Remotes["SetKnifeVisual"] -- Adjust this path as needed
+        visualPath:InvokeServer(selectedVisual) -- Knife visual logic
+
+        -- Notify success
+        OrionLib:MakeNotification({
+            Name = "Success",
+            Content = "Crate spawned and knife visualized: " .. selectedKnife,
+            Image = "rbxassetid://4483345998",
+            Time = 5
+        })
+    end
+})
+
+OrionLib:Init()
